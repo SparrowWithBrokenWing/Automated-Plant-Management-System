@@ -6,9 +6,9 @@ namespace TestProject1.Command_Tests
 {
     public class BaseCommandCollectionTest
     {
-        private class TestStringCommandCollection : BaseCommandCollection<string>
+        private class TestCommandCollectionWithStringIdentityType : BaseCommandCollection<string>
         {
-            public TestStringCommandCollection() : base(new Dictionary<string, object>()) { }
+            public TestCommandCollectionWithStringIdentityType() : base(new Dictionary<string, Delegate>()) { }
         }
 
         private class HelloWorldCommand : ICommand<string, string>, IDisposable
@@ -58,79 +58,78 @@ namespace TestProject1.Command_Tests
                 return 0;
             }
         }
-
+        
         [Fact]
-        public void VerifyThrowExeptionWhenTryToRegisterNullObject()
+        public void VerifyThrowExceptionWhenTryToRegisterWithNullIdentity()
         {
-            var instance = new TestStringCommandCollection();
-
-            Action tryToRegisterNullObject = () =>
+            var commandCollection = new TestCommandCollectionWithStringIdentityType();
+            Action tryToRegisterWithNullIdentity = () =>
             {
-                instance.Register("Hello", null);
+                commandCollection.Register(null, () => new HelloWorldCommand());
             };
-            Assert.Throws<ArgumentException>(tryToRegisterNullObject);
-        }
-
-        [Fact]
-        public void VerifyThrowExeptionWhenTryToRegisterWithInstanceThatNotDerivedFromICommand()
-        {
-            var instance = new TestStringCommandCollection();
-            Action tryToRegisterWithInstanceThatNotDerivedFromICommand = () =>
-            {
-                instance.Register("Hello", "string");
-            };
-            Assert.Throws<ArgumentException>(tryToRegisterWithInstanceThatNotDerivedFromICommand);
+            Assert.Throws<TestCommandCollectionWithStringIdentityType.NullIdentityException>(tryToRegisterWithNullIdentity);
         }
 
         [Fact]
         public void VerifyThrowExeptionWhenTryToRegisterWithExistedIdentity()
         {
-            var instance = new TestStringCommandCollection();
+            var commandCollection = new TestCommandCollectionWithStringIdentityType();
             Action tryToRegisterWithExistedIdentity = () =>
             {
-                instance.Register("Hello", new HelloWorldCommand());
-                instance.Register("Hello", new HiWorldCommand());
+                commandCollection.Register("Hello", () => new HelloWorldCommand());
+                commandCollection.Register("Hello", () => new HiWorldCommand());
             };
-            Assert.Throws<ArgumentException>(tryToRegisterWithExistedIdentity);
+            Assert.Throws<TestCommandCollectionWithStringIdentityType.IdentityException>(tryToRegisterWithExistedIdentity);
+        }
+        
+        [Fact]
+        public void VerifyThrowExeptionWhenTryToRegisterNullInstruction()
+        {
+            var commandCollection = new TestCommandCollectionWithStringIdentityType();
+
+            Action tryToRegisterNullObject = () =>
+            {
+                commandCollection.Register("Hello", null);
+            };
+            Assert.Throws<TestCommandCollectionWithStringIdentityType.NullInstructionException>(tryToRegisterNullObject);
         }
 
-        // i not sure the basecommandcollection instance need this ability
-        //[Fact]
-        //public void VerifyThrowExeptionWhenTryToRegisterWithExistedCommandType()
-        //{
-        //    var instance = new TestStringCommandCollection();
-        //    Action tryToRegisterWithExistedCommandType = () =>
-        //    {
-        //        instance.Register("Hello", (ICommand<string, string>)new HelloWorldCommand());
-        //        instance.Register("Another Hello", (ICommand<string, string>)new AnotherHelloWorldCommand());
-        //    };
-        //    Assert.Throws<ArgumentException>(tryToRegisterWithExistedCommandType);
-        //}
+        [Fact]
+        public void VerifyThrowExeptionWhenTryToRegisterWithAnInstructionNotReturnICommandInstance()
+        {
+            var commandCollection = new TestCommandCollectionWithStringIdentityType();
+            Action tryToRegisterWithAnInstructionNotReturnICommandInstance = () =>
+            {
+                commandCollection.Register("Try", () => new Object());
+            };
+            Assert.Throws<TestCommandCollectionWithStringIdentityType.InstructionReturnTypeException>(tryToRegisterWithAnInstructionNotReturnICommandInstance);
+        }
 
         [Fact]
-        public void VerifyThrowExceptionWhenTryToRegisterWithNullIdentity()
+        public void VerifyThrowExeptionWhenTryToRegisterWithAnInstructionThatHasParameter()
         {
-            var instance = new TestStringCommandCollection();
-            Action tryToRegisterWithNullIdentity = () =>
+            var commandCollection = new TestCommandCollectionWithStringIdentityType();
+            Action tryToRegisterWithAnInstructionThatHasParameter = () =>
             {
-                instance.Register(null, new HelloWorldCommand());
+                Func<string, object, ICommand<string, string>> func = (str, obj) => new HelloWorldCommand();
+                commandCollection.Register("Try", func);
             };
-            Assert.Throws<ArgumentException>(tryToRegisterWithNullIdentity);
+            Assert.Throws<TestCommandCollectionWithStringIdentityType.InstructionParameterException>(tryToRegisterWithAnInstructionThatHasParameter);
         }
 
         [Fact]
         public void VerifyResolveReturnRegisteredInstanceState()
         {
-            var instance = new TestStringCommandCollection();
+            var commandCollection = new TestCommandCollectionWithStringIdentityType();
 
             using (var command = new HelloWorldCommand())
             {
                 command.Flag = true;
-                instance.Register("Hello", command);
+                commandCollection.Register("Hello", () => command);
                 command.Flag = false;
             }
 
-            var resolvedCommand = instance.Resolve("Hello");
+            var resolvedCommand = commandCollection.Resolve("Hello");
 
             Assert.Equal(typeof(HelloWorldCommand), resolvedCommand.GetType());
             Assert.False(((HelloWorldCommand)resolvedCommand).Flag);
@@ -139,7 +138,7 @@ namespace TestProject1.Command_Tests
         [Fact]
         public void VerifyResolvedCommandExecuteWorkAsExpected()
         {
-            var instance = new TestStringCommandCollection();
+            var commandCollection = new TestCommandCollectionWithStringIdentityType();
             var strInput = "This is a new holy world!";
             var commandIdentity = "Another hello command";
             var toConsoleOutput = "";
@@ -153,8 +152,8 @@ namespace TestProject1.Command_Tests
                     toConsoleOutput += commandInput.ToString();
                 });
 
-            instance.Register(commandIdentity, new AnotherHelloWorldCommand(writerMock.Object));
-            var command = (ICommand<string, string>)instance.Resolve(commandIdentity);
+            commandCollection.Register(commandIdentity, () => new AnotherHelloWorldCommand(writerMock.Object));
+            var command = (ICommand<string, string>)commandCollection.Resolve(commandIdentity);
             var result = command.Execute(strInput);
 
             writerMock.Verify((writer) => writer.WriteLine(It.IsAny<string>()), Times.Once);

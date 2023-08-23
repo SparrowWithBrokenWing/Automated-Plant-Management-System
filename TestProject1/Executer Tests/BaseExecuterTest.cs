@@ -9,7 +9,7 @@ namespace TestProject1.Executer_Tests
     {
         private class TestCommandCollection : BaseCommandCollection<string>
         {
-            public TestCommandCollection() : base(new Dictionary<string, object>()) { }
+            public TestCommandCollection() : base(new Dictionary<string, Delegate>()) { }
         }
 
         private class TestVariableCollection : BaseVariableCollection<string>

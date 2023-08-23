@@ -3,17 +3,25 @@ using System.Reflection;
 
 namespace Control_System.Core.Command
 {
-    // the command collection don't care which type of command it containt, but only care about the command identity which command used to distinc with other command,
-    public abstract class BaseCommandCollection<TCommandIdentityType>
+    public interface ICommandCollection<TCommandIndentityType>
     {
-        protected readonly IDictionary<TCommandIdentityType, object> _registeredCommand;
+        public void Register(TCommandIndentityType identity, Delegate instruction);
+        public object Resolve(TCommandIndentityType identity);
+        public void Remove(TCommandIndentityType identity);
+    }
 
-        public BaseCommandCollection(IDictionary<TCommandIdentityType, object> commandCollectionInstance)
+    // the command collection don't care which type of command it containt, but only care about the command identity which command used to distinc with other command
+    // in the case command collection take the instruction to create command instance, it cannot provide the parameter which is needed in the executing instruction process, so the instruction have to find somehow provide its own data for create and this can be done without worried because even if the instruction process use something have been disposed by GC, it actually still there to be used, so don't worry about it.
+    public abstract partial class BaseCommandCollection<TCommandIdentityType> : ICommandCollection<TCommandIdentityType>
+    {
+        protected readonly IDictionary<TCommandIdentityType, Delegate> _commands;
+
+        public BaseCommandCollection(IDictionary<TCommandIdentityType, Delegate> commandCollectionInstance)
         {
-            _registeredCommand = commandCollectionInstance;
+            _commands = commandCollectionInstance;
         }
 
-        protected bool ConfirmThatThisTypeIsSpecificParameterizedTypeOfThatGenericTypeDefinition(Type thisType, Type thatType)
+        protected bool IsSpecificParameterizedTypeOfGenericTypeDefinition(Type needTOCheckType, Type genericTypeDefinition)
         {
             var isThisTypeABoundGenericType = new Func<Type, bool>((type) =>
             {
@@ -67,12 +75,12 @@ namespace Control_System.Core.Command
                 }
             });
 
-            return confirmProcess(thisType, thatType);
+            return confirmProcess(needTOCheckType, genericTypeDefinition);
         }
 
-        protected bool ConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(Type thisType, Type thatGenericTypeDefinition)
+        protected bool IsInheritedFromGenericTypeDefinition(Type needToCheckType, Type genericTypeDefinition)
         {
-            if (!thatGenericTypeDefinition.IsGenericTypeDefinition)
+            if (!genericTypeDefinition.IsGenericTypeDefinition)
             {
                 throw new ArgumentException();
             }
@@ -88,63 +96,104 @@ namespace Control_System.Core.Command
                     return type.IsInterface;
                 });
 
-                if (isThisTypeAnInterface(thatGenericTypeDefinition))
+                if (isThisTypeAnInterface(genericTypeDefinition))
                 {
-                    foreach (var item in thisType.GetInterfaces())
+                    foreach (var item in needToCheckType.GetInterfaces())
                     {
-                        if (ConfirmThatThisTypeIsSpecificParameterizedTypeOfThatGenericTypeDefinition(item, thatGenericTypeDefinition))
+                        if (IsSpecificParameterizedTypeOfGenericTypeDefinition(item, genericTypeDefinition))
                         {
                             return true;
                         }
                     }
+
+                    if (IsSpecificParameterizedTypeOfGenericTypeDefinition(needToCheckType, genericTypeDefinition))
+                    {
+                        return true;
+                    }
                 }
 
-                if (isThisTypeAClass(thatGenericTypeDefinition) && thisType.BaseType != null)
+                if (isThisTypeAClass(genericTypeDefinition) && needToCheckType.BaseType != null)
                 {
-                    return ConfirmThatThisTypeIsSpecificParameterizedTypeOfThatGenericTypeDefinition(thisType.BaseType, thatGenericTypeDefinition);
+                    return IsSpecificParameterizedTypeOfGenericTypeDefinition(needToCheckType.BaseType, genericTypeDefinition);
                 }
 
                 return false;
             }
         }
 
-        public virtual void Register(TCommandIdentityType identity, object commandInstance)
+        public virtual void Register(TCommandIdentityType identity, Delegate instruction)
         {
-            if (commandInstance == null)
-            {
-                throw new ArgumentException("The provided object is null.");
-            }
-
             if (identity == null)
             {
-                throw new ArgumentException("The identity is null.");
+                throw new NullIdentityException();
             }
 
-            if (! ConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(commandInstance.GetType(), typeof(ICommand<,>)))
+            if (_commands.ContainsKey(identity))
             {
-                throw new ArgumentException("The provided object is not inherited from ICommand."); 
+                throw new IdentityException("Existed identity.");
             }
 
-            // i not sure i need this
-            //foreach (var command in _registeredCommand)
-            //{
-            //    if (command.Value.GetType() == commandType)
-            //    {
-            //        throw new ArgumentException("Existed command type.");
-            //    }
-            //}
+            if (instruction == null)
+            {
+                throw new NullInstructionException();
+            }
 
-            _registeredCommand.Add(identity, commandInstance);
+            if (!IsInheritedFromGenericTypeDefinition(instruction.Method.ReturnType, typeof(ICommand<,>)))
+            {
+                throw new InstructionReturnTypeException("The instruction does not return instance of ICommand<,> type.");
+            }
+
+            if (instruction.Method.GetParameters().Any())
+            {
+                throw new InstructionParameterException("Cannot provide to instruction any parameter.");
+            }
+
+            _commands.Add(identity, instruction);
+
         }
 
         public virtual object Resolve(TCommandIdentityType identity)
         {
-            return _registeredCommand[identity];
+            return _commands[identity].DynamicInvoke();
         }
 
         public virtual void Remove(TCommandIdentityType identity)
         {
-            _registeredCommand.Remove(identity);
+            _commands.Remove(identity);
+        }
+
+    }
+
+    partial class BaseCommandCollection<TCommandIdentityType>
+    {
+        public class InstructionException : ArgumentException
+        {
+            public InstructionException(string exceptionInfo = "") : base("Instruction exeption" + (exceptionInfo.Any() ? ": " + exceptionInfo : "")) { }
+        }
+
+        public class NullInstructionException : InstructionException
+        {
+            public NullInstructionException() : base("Instruction is null.") { }
+        }
+
+        public class InstructionParameterException : InstructionException
+        {
+            public InstructionParameterException(string parameterExceptionInfo) : base(parameterExceptionInfo) { }
+        }
+
+        public class InstructionReturnTypeException : InstructionException
+        {
+            public InstructionReturnTypeException(string returnTypeExceptionInfo) : base(returnTypeExceptionInfo) { }
+        }
+
+        public class IdentityException : ArgumentException
+        {
+            public IdentityException(string exceptionInfo = "") : base("Identity exception" + (exceptionInfo.Any() ? ": " + exceptionInfo : "")) { }
+        }
+
+        public class NullIdentityException : IdentityException
+        {
+            public NullIdentityException() : base("Identity is null.") { }
         }
     }
 }

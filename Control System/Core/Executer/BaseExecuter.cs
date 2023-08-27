@@ -7,7 +7,7 @@ namespace Control_System.Core.Executer
     // each type of executer should handle one specific request type only    
     // but should each executer only execute a type of command?
     // if request itself is where user specify the command they want to run and the variable they want to provide to command, what should be the type of command collection
-    public abstract class BaseExecuter<TRequestType, TCommandIdentityType, TCommandReturnType, TVariableIdentityType>
+    public abstract partial class BaseExecuter<TRequestType, TCommandIdentityType, TCommandReturnType, TVariableIdentityType>
     {
         private BaseCommandCollection<TCommandIdentityType> _commands;
         private BaseVariableCollection<TVariableIdentityType> _variables;
@@ -18,7 +18,7 @@ namespace Control_System.Core.Executer
             _variables = variableCollection;
         }
 
-        protected bool ConfirmThatThisTypeIsSpecificParameterizedTypeOfThatGenericTypeDefinition(Type thisType, Type thatType)
+        protected bool IsSpecificParameterizedTypeOfGenericTypeDefinition(Type needToCheckType, Type genericTypeDefinition)
         {
             var isThisTypeABoundGenericType = new Func<Type, bool>((type) =>
             {
@@ -72,12 +72,12 @@ namespace Control_System.Core.Executer
                 }
             });
 
-            return confirmProcess(thisType, thatType);
+            return confirmProcess(needToCheckType, genericTypeDefinition);
         }
 
-        protected bool ConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(Type thisType, Type thatGenericTypeDefinition)
+        protected bool IsInheritedFromGenericTypeDefinition(Type needToCheckType, Type genericTypeDefinition)
         {
-            if (!thatGenericTypeDefinition.IsGenericTypeDefinition)
+            if (!genericTypeDefinition.IsGenericTypeDefinition)
             {
                 return false;
             }
@@ -93,20 +93,20 @@ namespace Control_System.Core.Executer
                     return type.IsInterface;
                 });
 
-                if (isThisTypeAnInterface(thatGenericTypeDefinition))
+                if (isThisTypeAnInterface(genericTypeDefinition))
                 {
-                    foreach (var item in thisType.GetInterfaces())
+                    foreach (var item in needToCheckType.GetInterfaces())
                     {
-                        if (ConfirmThatThisTypeIsSpecificParameterizedTypeOfThatGenericTypeDefinition(item, thatGenericTypeDefinition))
+                        if (IsSpecificParameterizedTypeOfGenericTypeDefinition(item, genericTypeDefinition))
                         {
                             return true;
                         }
                     }
                 }
 
-                if (isThisTypeAClass(thatGenericTypeDefinition) && thisType.BaseType != null)
+                if (isThisTypeAClass(genericTypeDefinition) && needToCheckType.BaseType != null)
                 {
-                    return ConfirmThatThisTypeIsSpecificParameterizedTypeOfThatGenericTypeDefinition(thisType.BaseType, thatGenericTypeDefinition);
+                    return IsSpecificParameterizedTypeOfGenericTypeDefinition(needToCheckType.BaseType, genericTypeDefinition);
                 }
 
                 return false;
@@ -115,50 +115,45 @@ namespace Control_System.Core.Executer
 
         public virtual void HandleRequest(TRequestType request)
         {
-            var specifiedCommand = _commands.Resolve(GetSpecificCommandIdentity(request));
+            var specifiedVariable = _variables.Resolve(GetSpecifiedVariableIdentity(request));
+            var specifiedCommand = _commands.Resolve(GetSpecifiedCommandIdentity(request));
 
             Type commandType = specifiedCommand.GetType();
 
-            if (!ConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(commandType, typeof(ICommand<,>)))
+            if (!IsInheritedFromGenericTypeDefinition(commandType, typeof(ICommand<,>)))
             {
                 throw new RequestExeption("Specified command isn't a specific parameterized type of ICommand interface.");
             }
 
-            //var executeMethodInfo = commandType.GetMethod("Execute", );
+            var returnTypeOfExecuteMethod = typeof(TCommandReturnType);
+            var parameterTypeOfExecuteMthod = specifiedVariable.GetType();
+            
+            var executeMethodInfo = commandType.GetMethod(
+                "Execute",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod, 
+                new Type[] {parameterTypeOfExecuteMthod});
 
-            //if (executeMethodInfo == null)
-            //{
-            //    // throw something here
-            //}
-
-            //var commandReturnType;
-            //var commandParamType;
-
-            // throw exception if executer don't support return type
-            //if ()
-            //{
-
-            //}
-
-            var specifiedVariable = _variables.Resolve(GetSpecificVariableIdentity(request));
-
-            // throw exception if the specified variable don't match require of command execute method
-            //if ()
-            //{
-
-            //}
+            if (executeMethodInfo == null)
+            {
+                throw new RequestExeption("Cannot find match command.");
+            }
 
             // call execute method of command instance
+            var commandResult = executeMethodInfo.Invoke(specifiedCommand, new object[] { specifiedVariable });
 
+            HandleReturnResultOfCommand((TCommandReturnType?)commandResult);
         }
 
+        protected abstract TCommandIdentityType GetSpecifiedCommandIdentity(TRequestType request);
+        protected abstract TVariableIdentityType GetSpecifiedVariableIdentity(TRequestType request);
+        protected abstract void HandleReturnResultOfCommand(TCommandReturnType? returnObject);
+    }
+
+    partial class BaseExecuter<TRequestType, TCommandIdentityType, TCommandReturnType, TVariableIdentityType>
+    {
         public class RequestExeption : ArgumentException
         {
             public RequestExeption(string? message) : base(message) { }
         }
-
-        protected abstract TCommandIdentityType GetSpecificCommandIdentity(TRequestType request);
-        protected abstract TVariableIdentityType GetSpecificVariableIdentity(TRequestType request);
-        protected abstract void HandleReturnResultOfCommand(TCommandReturnType returnObject);
     }
 }

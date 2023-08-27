@@ -13,11 +13,6 @@ namespace TestProject1.Variable_Tests
             }            
         }
 
-        private class TestStruct
-        {
-            public int Number;
-        }
-
         [Fact]
         public void VerifyThrowExceptionWhenTryToRegisterWithNullIdentity()
         {
@@ -52,10 +47,16 @@ namespace TestProject1.Variable_Tests
             Assert.Throws<ArgumentException>(tryToRegisterWithSameVariableIdentity);
         }
 
+        private class TestClass
+        {
+            public int Number;
+        }
+
+        // can only work with reference type
         [Fact]
         public void VerifyObjectStateChangedAfterResolvedThenChangedAndRegister()
         {
-            var registerObject = new TestStruct();
+            var registerObject = new TestClass();
             registerObject.Number = 0;
             var testVariableCollection = new TestVariableCollection<string>(new Dictionary<string, object>());
             var identity = "testVariable";
@@ -63,12 +64,12 @@ namespace TestProject1.Variable_Tests
             testVariableCollection.Register(identity, registerObject);
 
             registerObject.Number = -1;
-            var oldState = (TestStruct)testVariableCollection.Resolve(identity);
-            Assert.True(oldState.Number == -1);
+            var oldState = (TestClass)testVariableCollection.Resolve(identity);
+            Assert.Equal(-1, oldState.Number);
 
             registerObject.Number = 30;
-            var newState = (TestStruct)testVariableCollection.Resolve(identity);
-            Assert.True(newState.Number == 30);
+            var newState = (TestClass)testVariableCollection.Resolve(identity);
+            Assert.Equal(30, newState.Number);
         }
     }
 }

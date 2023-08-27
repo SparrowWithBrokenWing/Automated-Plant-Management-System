@@ -1,12 +1,13 @@
 ﻿
 namespace Control_System.Core.Variable
 {
-    public abstract unsafe class BaseVariableCollection<TVariableIdentityType>
+    public abstract class BaseVariableCollection<TVariableIdentityType> 
     {
         protected readonly IDictionary<TVariableIdentityType, object> _registeredVariable;
 
         public BaseVariableCollection(IDictionary<TVariableIdentityType, object> variableCollectionInstance)
         {
+            //_registeredVariable = new Dictionary<TVariableIdentityType, object?>(variableCollectionInstance);
             _registeredVariable = variableCollectionInstance;
         }
 
@@ -27,10 +28,9 @@ namespace Control_System.Core.Variable
             _registeredVariable.Add(identity, variableInstance);
         }
 
-        public virtual ref object Resolve(TVariableIdentityType identity)
-        {
-            var result = _registeredVariable[identity];
-            return ref result;
+        public virtual object Resolve(TVariableIdentityType identity)
+        {            
+            return _registeredVariable[identity];
         }
 
         public virtual void Remove(TVariableIdentityType identity)

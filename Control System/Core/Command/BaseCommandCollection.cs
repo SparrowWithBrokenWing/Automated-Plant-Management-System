@@ -21,7 +21,7 @@ namespace Control_System.Core.Command
             _commands = commandCollectionInstance;
         }
 
-        protected bool IsSpecificParameterizedTypeOfGenericTypeDefinition(Type needTOCheckType, Type genericTypeDefinition)
+        protected bool IsSpecificParameterizedTypeOfGenericTypeDefinition(Type needToCheckType, Type genericTypeDefinition)
         {
             var isThisTypeABoundGenericType = new Func<Type, bool>((type) =>
             {
@@ -75,7 +75,7 @@ namespace Control_System.Core.Command
                 }
             });
 
-            return confirmProcess(needTOCheckType, genericTypeDefinition);
+            return confirmProcess(needToCheckType, genericTypeDefinition);
         }
 
         protected bool IsInheritedFromGenericTypeDefinition(Type needToCheckType, Type genericTypeDefinition)

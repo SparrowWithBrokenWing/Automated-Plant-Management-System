@@ -1,70 +1,29 @@
-﻿using System.Globalization;
-using System.Text;
+﻿using System;
+using System.Reflection;
 
 class Program
 {
-    static void Main(string[] args)
+    static void Main()
     {
-        var data = new[]
-        {
-            "Bar",
-            "Barbec",
-            "Barbecue",
-            "Batman",
-        };
+        Type type = typeof(SomeClass);
 
-        var builder = new StringBuilder();
-        var input = Console.ReadKey(intercept: true);
+        // Create a ParameterModifier with a single true value (for the first parameter)
+        ParameterModifier parameterModifier = new ParameterModifier(1);
+        parameterModifier[0] = true;
 
-        while (input.Key != ConsoleKey.Enter)
-        {
-            var currentInput = builder.ToString();
-            if (input.Key == ConsoleKey.Tab)
-            {
-                var match = data.FirstOrDefault(item => item != currentInput && item.StartsWith(currentInput, true, CultureInfo.InvariantCulture));
-                if (string.IsNullOrEmpty(match))
-      ,          {
-                    input = Console.ReadKey(intercept: true);
-                    continue;
-                }
+        // Get a specific method by name using the ParameterModifier
+        MethodInfo method = type.GetMethod("TestMethod", new Type[] { typeof(string) }, new ParameterModifier[] { parameterModifier });
 
-                ClearCurrentLine();
-                builder.Clear();
-
-                Console.Write(match);
-                builder.Append(match);
-            }
-            else
-            {
-                if (input.Key == ConsoleKey.Backspace && currentInput.Length > 0)
-                {
-                    builder.Remove(builder.Length - 1, 1);
-                    ClearCurrentLine();
-
-                    currentInput = currentInput.Remove(currentInput.Length - 1);
-                    Console.Write(currentInput);
-                }
-                else
-                {
-                    var key = input.KeyChar;
-                    builder.Append(key);
-                    Console.Write(key);d
-                }
-            }
-
-            input = Console.ReadKey(intercept: true);
-        }
-        Console.Write(input.KeyChar);
+        // Use the MethodInfo object to invoke the method
+        object instance = Activator.CreateInstance(type);
+        var test = method.Invoke(instance, new object[] { "Hello, world!" });
     }
+}
 
-    /// <remarks>
-    /// https://stackoverflow.com/a/8946847/1188513
-    /// </remarks>>
-    private static void ClearCurrentLine()
+class SomeClass
+{
+    public void TestMethod(string message)
     {
-        var currentLine = Console.CursorTop;
-        Console.SetCursorPosition(0, Console.CursorTop);
-        Console.Write(new string(' ', Console.WindowWidth));
-        Console.SetCursorPosition(0, currentLine);
+        Console.WriteLine(message);
     }
 }

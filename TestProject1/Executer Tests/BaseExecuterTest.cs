@@ -2,69 +2,106 @@
 using Control_System.Core.Variable;
 using Control_System.Core.Executer;
 using Moq;
+using Xunit.Sdk;
+using Microsoft.VisualStudio.TestPlatform.Utilities;
+using Moq.Protected;
+using System.Text.RegularExpressions;
 
 namespace TestProject1.Executer_Tests
 {
     public class BaseExecuterTest
     {
-        private class TestCommandCollection : BaseCommandCollection<string>
-        {
-            public TestCommandCollection() : base(new Dictionary<string, Delegate>()) { }
-        }
-
-        private class TestVariableCollection : BaseVariableCollection<string>
-        {
-            public TestVariableCollection() : base(new Dictionary<string, object>()) { }
-        }
-
-        private class TestExecuter : BaseExecuter<string, string, string, string>
-        {
-            public TestExecuter() : base(
-                new TestVariableCollection(),
-                new TestCommandCollection())
-            { }
-
-            public bool TestConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(Type thisType, Type thatGenericTypeDefinition)
-                => ConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(thisType, thatGenericTypeDefinition);
-
-            protected override string GetSpecificCommandIdentity(string request)
-            {
-                throw new NotImplementedException();
-            }
-
-            protected override string GetSpecificVariableIdentity(string request)
-            {
-                throw new NotImplementedException();
-            }
-
-            protected override void HandleReturnResultOfCommand(string returnObject)
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        private class Test { }
-        private class Test1 : Test { }
-        private interface ITest { }
-        private class Test2 : ITest { }
-        private abstract class Test<T> { }
-        private class Test3<T> : Test<T> { }
-
-        TestExecuter executer = new TestExecuter();
-
         [Fact]
-        public void VerifyConfirmInheritedMethodReturnTrue()
+        void VerifyHandleRequestWorkAsExpected()
         {
-            Assert.True(executer.TestConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(typeof(Test3<string>), typeof(Test<>)));
+            var request = "run HelloWorldCommand with hiWorldMessage";
+            var consoleOutput = "";
+            var consoleOutputExpectation = "Hello world\nHi!\nHelloWorldCommand executed\n";
+
+            // mock the behavior of a Console
+            var mockOfTextWriter = new Mock<TextWriter>();
+            mockOfTextWriter.Setup((writer) => writer.WriteLine(It.IsAny<string>()))
+                .Callback<string>((str) =>
+                {
+                    consoleOutput += str.ToString() + "\n";
+                });
+
+            var commandMock = new Mock<ICommand<string, string>>();
+            commandMock
+                .Setup((command) => command.Execute(It.IsAny<string>()))
+                .Returns<string>((string input) =>
+                {
+                    mockOfTextWriter.Object.WriteLine("Hello world\n" + input);
+                    return "HelloWorldCommand executed";
+                });
+
+            //commandMock.Object.Execute("Hi!");
+
+            var mockOfVariableCollection = new Mock<BaseVariableCollection<string>>(new object[] { new Dictionary<string, object>() });
+            mockOfVariableCollection
+                .Setup((collection) => collection.Register(It.IsAny<string>(), It.IsAny<string>()))
+                .CallBase();
+            mockOfVariableCollection
+                .Setup((collection) => collection.Resolve(It.IsAny<string>()))
+                .CallBase();
+            var variableIdentity = "hiWorldMessage";
+            var variableValue = "Hi!";
+            mockOfVariableCollection.Object.Register(variableIdentity, variableValue);
+
+            var mockOfCommandCollection = new Mock<BaseCommandCollection<string>>(new object[] { new Dictionary<string, Delegate>() });
+            mockOfCommandCollection
+                .Setup((collection) => collection.Register(It.IsAny<string>(), It.IsAny<Delegate>()))
+                .CallBase();
+            mockOfCommandCollection
+                .Setup((collection) => collection.Resolve(It.IsAny<string>()))
+                .CallBase();
+            var commandIdentity = "HelloWorldCommand";
+            var commandConstructionDelegate = () => commandMock.Object;
+            mockOfCommandCollection.Object.Register(commandIdentity, commandConstructionDelegate);
+
+            var mockOfBaseExecuter = new Mock<BaseExecuter<string, string, string, string>>(new object[]
+            {
+                mockOfVariableCollection.Object,
+                mockOfCommandCollection.Object
+            });
+            //
+            mockOfBaseExecuter.Protected()
+                .Setup<string>("GetSpecifiedCommandIdentity", ItExpr.Is<string>((str) => str == request))
+                .Returns<string>((request) =>
+                {
+                    var requestAnalyzer = new Regex(
+                        @"run\s\b(?<commandIdentity>\w+)\b\swith\s\b(?<variableIdentity>\w+)",
+                        RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+                    var commandIdentity = requestAnalyzer.Match(request).Groups["commandIdentity"].Value;
+                    return commandIdentity;
+                });
+            //
+            mockOfBaseExecuter.Protected()
+                .Setup<string>("GetSpecifiedVariableIdentity", ItExpr.Is<string>((str) => str == request))
+                .Returns<string>((request) =>
+                {
+                    var requestAnalyzer = new Regex(
+                        @"run\s\b(?<commandIdentity>\w+)\b\swith\s\b(?<variableIdentity>\w+)",
+                        RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+                    var variableIdentity = requestAnalyzer.Match(request).Groups["variableIdentity"].Value;
+                    return variableIdentity;
+                });
+            //
+            mockOfBaseExecuter.Protected()
+                .Setup("HandleReturnResultOfCommand", ItExpr.Is<string>((str) => str == "HelloWorldCommand executed"))
+                .Callback<string?>((str) =>
+                {
+                    mockOfTextWriter.Object.WriteLine(str);
+                });
+            //
+            mockOfBaseExecuter
+                .Setup((executer) => executer.HandleRequest(It.Is<string>((str) => str == request)))
+                .CallBase();
+
+            mockOfBaseExecuter.Object.HandleRequest(request);
+
+            Assert.Equal(consoleOutputExpectation, consoleOutput);
         }
 
-        [Fact]
-        public void VerifyConfirmInheritedMethodReturnFalseWhenSecondParameterIsNotAGenericTypeDefinition()
-        {
-            Assert.False(executer.TestConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(typeof(Test1), typeof(Test)));
-            Assert.False(executer.TestConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(typeof(ITest), typeof(Test2)));
-            Assert.False(executer.TestConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(typeof(Test1), typeof(Test2)));
-            Assert.False(executer.TestConfirmThatThisTypeIsInheritedFromThatGenericTypeDefinition(typeof(Test2), typeof(System.Collections.IList)));
-        }
     }
 }

@@ -1,22 +1,13 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
-
-namespace Control_System.Core.Command
+﻿namespace Control_System.Core_Components.Command
 {
-    public interface ICommandCollection<TCommandIndentityType>
-    {
-        public void Register(TCommandIndentityType identity, Delegate instruction);
-        public object Resolve(TCommandIndentityType identity);
-        public void Remove(TCommandIndentityType identity);
-    }
 
     // the command collection don't care which type of command it containt, but only care about the command identity which command used to distinc with other command
     // in the case command collection take the instruction to create command instance, it cannot provide the parameter which is needed in the executing instruction process, so the instruction have to find somehow provide its own data for create and this can be done without worried because even if the instruction process use something have been disposed by GC, it actually still there to be used, so don't worry about it.
-    public abstract partial class BaseCommandCollection<TCommandIdentityType> : ICommandCollection<TCommandIdentityType>
+    public abstract partial class DefaultImplementationOfICommandCollection<TCommandIdentityType> : ICommandCollection<TCommandIdentityType>
     {
         protected readonly IDictionary<TCommandIdentityType, Delegate> _commands;
 
-        public BaseCommandCollection(IDictionary<TCommandIdentityType, Delegate> commandCollectionInstance)
+        public DefaultImplementationOfICommandCollection(IDictionary<TCommandIdentityType, Delegate> commandCollectionInstance)
         {
             _commands = commandCollectionInstance;
         }
@@ -164,7 +155,7 @@ namespace Control_System.Core.Command
 
     }
 
-    partial class BaseCommandCollection<TCommandIdentityType>
+    partial class DefaultImplementationOfICommandCollection<TCommandIdentityType>
     {
         public class InstructionException : ArgumentException
         {

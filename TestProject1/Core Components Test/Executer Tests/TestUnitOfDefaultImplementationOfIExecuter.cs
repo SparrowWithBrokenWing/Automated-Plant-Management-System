@@ -1,6 +1,6 @@
-﻿using Control_System.Core.Command;
-using Control_System.Core.Variable;
-using Control_System.Core.Executer;
+﻿using Control_System.Core_Components.Command;
+using Control_System.Core_Components.Variable;
+using Control_System.Core_Components.Executer;
 using Moq;
 using Xunit.Sdk;
 using Microsoft.VisualStudio.TestPlatform.Utilities;
@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace TestProject1.Executer_Tests
 {
-    public class BaseExecuterTest
+    public class TestUnitForDefaultImplementationOfIExecuter
     {
         [Fact]
         void VerifyHandleRequestWorkAsExpected()
@@ -37,7 +37,7 @@ namespace TestProject1.Executer_Tests
 
             //commandMock.Object.Execute("Hi!");
 
-            var mockOfVariableCollection = new Mock<BaseVariableCollection<string>>(new object[] { new Dictionary<string, object>() });
+            var mockOfVariableCollection = new Mock<DefaultImplementationOfIVariableCollection<string>>(new object[] { new Dictionary<string, object>() });
             mockOfVariableCollection
                 .Setup((collection) => collection.Register(It.IsAny<string>(), It.IsAny<string>()))
                 .CallBase();
@@ -48,7 +48,7 @@ namespace TestProject1.Executer_Tests
             var variableValue = "Hi!";
             mockOfVariableCollection.Object.Register(variableIdentity, variableValue);
 
-            var mockOfCommandCollection = new Mock<BaseCommandCollection<string>>(new object[] { new Dictionary<string, Delegate>() });
+            var mockOfCommandCollection = new Mock<DefaultImplementationOfICommandCollection<string>>(new object[] { new Dictionary<string, Delegate>() });
             mockOfCommandCollection
                 .Setup((collection) => collection.Register(It.IsAny<string>(), It.IsAny<Delegate>()))
                 .CallBase();
@@ -59,7 +59,7 @@ namespace TestProject1.Executer_Tests
             var commandConstructionDelegate = () => commandMock.Object;
             mockOfCommandCollection.Object.Register(commandIdentity, commandConstructionDelegate);
 
-            var mockOfBaseExecuter = new Mock<BaseExecuter<string, string, string, string>>(new object[]
+            var mockOfBaseExecuter = new Mock<DefaultImplementationOfIExecuter<string, string, string, string>>(new object[]
             {
                 mockOfVariableCollection.Object,
                 mockOfCommandCollection.Object

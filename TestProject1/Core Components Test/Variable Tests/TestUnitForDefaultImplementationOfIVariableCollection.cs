@@ -1,11 +1,11 @@
-﻿using Control_System.Core.Variable;
+﻿using Control_System.Core_Components.Variable;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace TestProject1.Variable_Tests
 {
-    public class BaseVariableCollectionTest
+    public class TestUnitForDefaultImplementationOfIVariableCollection
     {
-        private class TestVariableCollection<TTestIdentityType> : BaseVariableCollection<TTestIdentityType>
+        private class TestVariableCollection<TTestIdentityType> : DefaultImplementationOfIVariableCollection<TTestIdentityType>
         {
             public TestVariableCollection(IDictionary<TTestIdentityType, object> variableCollectionInstance) : base(variableCollectionInstance)
             {

@@ -1,18 +1,18 @@
-﻿using Control_System.Core.Command;
-using Control_System.Core.Variable;
+﻿using Control_System.Core_Components.Command;
+using Control_System.Core_Components.Variable;
 using System.Reflection;
 
-namespace Control_System.Core.Executer
+namespace Control_System.Core_Components.Executer
 {
     // each type of executer should handle one specific request type only    
     // but should each executer only execute a type of command?
     // if request itself is where user specify the command they want to run and the variable they want to provide to command, what should be the type of command collection
-    public abstract partial class BaseExecuter<TRequestType, TCommandIdentityType, TCommandReturnType, TVariableIdentityType>
+    public abstract partial class DefaultImplementationOfIExecuter<TRequestType, TCommandIdentityType, TCommandReturnType, TVariableIdentityType> : IExecuter<TRequestType>
     {
-        private BaseCommandCollection<TCommandIdentityType> _commands;
-        private BaseVariableCollection<TVariableIdentityType> _variables;
+        protected ICommandCollection<TCommandIdentityType> _commands;
+        protected IVariableCollection<TVariableIdentityType> _variables;
 
-        public BaseExecuter(BaseVariableCollection<TVariableIdentityType> variableCollection, BaseCommandCollection<TCommandIdentityType> commandCollection)
+        protected DefaultImplementationOfIExecuter(IVariableCollection<TVariableIdentityType> variableCollection, ICommandCollection<TCommandIdentityType> commandCollection)
         {
             _commands = commandCollection;
             _variables = variableCollection;
@@ -149,7 +149,7 @@ namespace Control_System.Core.Executer
         protected abstract void HandleReturnResultOfCommand(TCommandReturnType? returnObject);
     }
 
-    partial class BaseExecuter<TRequestType, TCommandIdentityType, TCommandReturnType, TVariableIdentityType>
+    partial class DefaultImplementationOfIExecuter<TRequestType, TCommandIdentityType, TCommandReturnType, TVariableIdentityType>
     {
         public class RequestExeption : ArgumentException
         {

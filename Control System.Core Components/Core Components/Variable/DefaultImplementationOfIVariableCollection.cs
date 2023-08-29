@@ -1,11 +1,12 @@
 ﻿
-namespace Control_System.Core.Variable
+namespace Control_System.Core_Components.Variable
 {
-    public abstract class BaseVariableCollection<TVariableIdentityType> 
+
+    public abstract class DefaultImplementationOfIVariableCollection<TVariableIdentityType> : IVariableCollection<TVariableIdentityType>
     {
         protected readonly IDictionary<TVariableIdentityType, object> _registeredVariable;
 
-        public BaseVariableCollection(IDictionary<TVariableIdentityType, object> variableCollectionInstance)
+        public DefaultImplementationOfIVariableCollection(IDictionary<TVariableIdentityType, object> variableCollectionInstance)
         {
             //_registeredVariable = new Dictionary<TVariableIdentityType, object?>(variableCollectionInstance);
             _registeredVariable = variableCollectionInstance;

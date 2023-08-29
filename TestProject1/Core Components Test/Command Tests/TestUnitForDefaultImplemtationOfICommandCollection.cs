@@ -1,12 +1,11 @@
-﻿using Control_System.Core.Command;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Control_System.Core_Components.Command;
 using Moq;
 
 namespace TestProject1.Command_Tests
 {
-    public class BaseCommandCollectionTest
+    public class TestUnitForDefaultImplemtationOfICommandCollection
     {
-        private class TestCommandCollectionWithStringIdentityType : BaseCommandCollection<string>
+        private class TestCommandCollectionWithStringIdentityType : DefaultImplementationOfICommandCollection<string>
         {
             public TestCommandCollectionWithStringIdentityType() : base(new Dictionary<string, Delegate>()) { }
         }

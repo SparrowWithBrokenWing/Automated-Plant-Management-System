@@ -1,8 +1,0 @@
-bin/
-.vs/
-obj/
-*.csproj
-*.sln
-/Service Collection Adapter Test Project
-/Microsoft DI Container Adapter
-/Infrastructure/Query - Command Principle
